@@ -4,6 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+ebooklib = "*"
+beautifulsoup4 = "*"
+termcolor = "*"
+openai = "*"
+sanitize-filename = "*"
 
 [dev-packages]
 pylint = "*"
