@@ -83,10 +83,10 @@ def validate_and_extract_section_names(completion: str) -> List[str]:
     Each non-empty line must follow a similar format to:
     !!![SECTION_NAME]!!! or !!! SECTION_NAME !!! or even !!! [ SECTION_NAME ] !!!
     with optional square brackets and extra whitespace allowed.
-    
+
     The function trims whitespace and any leading/trailing square brackets
     from the resulting section name.
-    
+
     Args:
         completion: The completion string from the AI
 
@@ -127,6 +127,7 @@ def validate_and_extract_section_names(completion: str) -> List[str]:
 
     return section_names
 
+
 def get_completion_0(dialog: Dialog, temperature=0.5, max_tokens=None):
     response = client.chat.completions.create(
         model="gpt-4o", temperature=temperature, max_tokens=max_tokens, messages=dialog
@@ -154,14 +155,14 @@ def get_user_input(
     return user_input.strip()
 
 
-def main():
+def ask(conversation):
     question = get_user_input(
-        'Ask a question about "Flatland" by Edwin Abbot, or type "!quit" to quit: ',
+        'Ask a question about "Flatland" by Edwin Abbot, or type "!quit" to quit:\n',
         ["!quit"],
     )
     if question is None:
         print("Goodbye!")
-        return
+        return "!quit"
     dialog = []
     dialog.append(
         {
@@ -185,6 +186,9 @@ If you want to cite multiple sections, put one on each line, e.g.:
 !!![SECTION_NAME_2]!!!
 !!![SECTION_NAME_3]!!!
 
+If no particular sections match, try to answer the question in general given the summary statements for 
+all sections.
+
 """.strip(),
         }
     )
@@ -204,6 +208,8 @@ Summary Statements:
         ]
     )
 
+    dialog.extend(conversation)
+
     dialog.append({"role": "user", "content": question})
 
     print("GPT is thinking...")
@@ -214,39 +220,76 @@ Summary Statements:
 
         selected_section_names = validate_and_extract_section_names(completion)
 
-    except AIResponseInvalidFormat:
-        print(colored("GPT couldn't figure out which parts of the book were relevant.", "red"))
+        available_section_names = [section.name for section in book_sections]
 
-    available_section_names = [section.name for section in book_sections]
-
-    if any(
-        selected_section_name not in available_section_names
-        for selected_section_name in selected_section_names
-    ):
-        print(
-            colored(
-                """
-GPT could not find any book sections that can help answer your question.
-Try asking again or asking another question.
-                      """.strip(),
-                "yellow",
+        if any(
+            selected_section_name not in available_section_names
+            for selected_section_name in selected_section_names
+        ):
+            raise AIResponseInvalidFormat(
+                "AI Chose to investigate sections that don't exist.", completion
             )
+
+        selected_section_objects = []
+
+        for selected_section_name in selected_section_names:
+            # find first matching section by name
+            for section in book_sections:
+                if section.name == selected_section_name:
+                    selected_section_objects.append(section)
+                    break
+
+        dialog = []
+
+        dialog.append(
+            {
+                "role": "system",
+                "content": """
+    Please answer the user's question or questions based on the following excerpts from the book
+    "Flatland" by Edwin Abbot.
+    """,
+            }
         )
 
-    selected_section_objects = []
+        for section in selected_section_objects:
+            dialog.append(
+                {
+                    "role": "function",
+                    "name": "section_text_retriever",
+                    "content": section.original_text,
+                }
+            )
 
-    for selected_section_name in selected_section_names:
-        # find first matching section by name
-        for section in book_sections:
-            if section.name == selected_section_name:
-                selected_section_objects.append(section)
-                break
+        dialog.extend(conversation)
 
-    # have to implement the rest of this later
-    # as a placeholder/debug
-    print(colored("GPT thought that the following sections are relevant:", "green"))
-    for section in selected_section_objects:
-        print(colored(f" - {section.name}", "blue"))
+        dialog.append({"role": "user", "content": question})
+
+        completion = get_completion_0(dialog)
+
+        conversation.append({"role": "user", "content": question})
+
+        conversation.append({"role": "assistant", "content": completion})
+
+        print(colored(completion, "green"))
+
+    except AIResponseInvalidFormat as e:
+
+        original_completion = e.raw_response
+
+        conversation.append({"role": "user", "content": question})
+
+        conversation.append({"role": "assistant", "content": original_completion})
+
+        print(colored(original_completion, "green"))
+
+    return "!continue"
+
+
+def main():
+    retval = None
+    conversation = []
+    while retval != "!quit":
+        retval = ask(conversation)
 
 
 if __name__ == "__main__":

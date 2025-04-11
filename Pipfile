@@ -9,6 +9,7 @@ beautifulsoup4 = "*"
 termcolor = "*"
 openai = "*"
 sanitize-filename = "*"
+requests = "*"
 
 [dev-packages]
 pylint = "*"
