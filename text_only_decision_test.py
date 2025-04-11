@@ -80,9 +80,13 @@ def validate_and_extract_section_names(completion: str) -> List[str]:
     """
     Validate the completion response and extract section names.
 
-    Each non-empty line must strictly follow the format !!![SECTION_NAME]!!!
-    Whitespace at the beginning and end of the completion is ignored.
-
+    Each non-empty line must follow a similar format to:
+    !!![SECTION_NAME]!!! or !!! SECTION_NAME !!! or even !!! [ SECTION_NAME ] !!!
+    with optional square brackets and extra whitespace allowed.
+    
+    The function trims whitespace and any leading/trailing square brackets
+    from the resulting section name.
+    
     Args:
         completion: The completion string from the AI
 
@@ -94,36 +98,34 @@ def validate_and_extract_section_names(completion: str) -> List[str]:
     """
     import re
 
-    # Trim whitespace at the beginning and end
+    # Trim whitespace at the beginning and end of the whole response
     completion = completion.strip()
 
-    # Split the completion into lines
-    lines = [line.strip() for line in completion.split("\n")]
-
-    # Filter out empty lines
-    lines = [line for line in lines if line]
+    # Split the completion into lines and filter out empty ones
+    lines = [line.strip() for line in completion.splitlines() if line.strip()]
 
     if not lines:
         raise AIResponseInvalidFormat(
             "AI response is empty or contains only whitespace", completion
         )
 
-    # Pattern to match the exact format !!![SECTION_NAME]!!!
-    pattern = r"^!!!\[(.*?)\]!!!$"
+    # Updated pattern that allows optional square brackets and extra whitespace:
+    # ^!!!\s*\[?\s*(.*?)\s*\]?\s*!!!$
+    pattern = r"^!!!\s*\[?\s*(.*?)\s*\]?\s*!!!$"
 
-    # Check if each line matches the pattern
     section_names = []
     for i, line in enumerate(lines):
         match = re.match(pattern, line)
         if not match:
             raise AIResponseInvalidFormat(
-                f"Line {i+1} doesn't match the expected format !!![SECTION_NAME]!!!: '{line}'",
+                f"Line {i+1} doesn't match the expected format. Got: '{line}'",
                 completion,
             )
-        section_names.append(match.group(1))
+        # Extract the section name, trim extra whitespace, and remove any stray square brackets.
+        section_name = match.group(1).strip().strip("[]")
+        section_names.append(section_name)
 
     return section_names
-
 
 def get_completion_0(dialog: Dialog, temperature=0.5, max_tokens=None):
     response = client.chat.completions.create(
@@ -208,7 +210,12 @@ Summary Statements:
 
     completion = get_completion_0(dialog)
 
-    selected_section_names = validate_and_extract_section_names(completion)
+    try:
+
+        selected_section_names = validate_and_extract_section_names(completion)
+
+    except AIResponseInvalidFormat:
+        print(colored("GPT couldn't figure out which parts of the book were relevant.", "red"))
 
     available_section_names = [section.name for section in book_sections]
 
