@@ -10,6 +10,7 @@ termcolor = "*"
 openai = "*"
 sanitize-filename = "*"
 requests = "*"
+prompt-toolkit = "*"
 
 [dev-packages]
 pylint = "*"

@@ -3,12 +3,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { toSerializableObject } from "@/utils/serialization";
 
-
 // Default values for optional fields.
 const DEFAULT_TEMPERATURE = 0.5;
 const DEFAULT_MAX_TOKENS = null;
 
-const MODEL = "gpt-4o"
+const MODEL = "gpt-4o";
 
 // Define the DialogMessage type (as a TypeScript union) for clarity.
 // Zod will be used for runtime validation.
@@ -95,7 +94,10 @@ const apiInputSchema = z.object({
   // temperature is optional with a default value.
   temperature: z.number().optional().default(DEFAULT_TEMPERATURE),
   // maxTokens can be a number or null and is optional with a default.
-  maxTokens: z.union([z.number(), z.null()]).optional().default(DEFAULT_MAX_TOKENS),
+  maxTokens: z
+    .union([z.number(), z.null()])
+    .optional()
+    .default(DEFAULT_MAX_TOKENS),
   // dialog must be an array of dialog messages.
   dialog: z.array(dialogMessageSchema),
 });
@@ -116,13 +118,16 @@ export default async function handler(
     // Validate and parse the request body using the defined schema.
     const apiInput: APIInput = apiInputSchema.parse(req.body);
 
-    const { temperature=DEFAULT_TEMPERATURE, maxTokens=DEFAULT_MAX_TOKENS, dialog } = apiInput;
+    const {
+      temperature = DEFAULT_TEMPERATURE,
+      maxTokens = DEFAULT_MAX_TOKENS,
+      dialog,
+    } = apiInput;
 
     // Call GPT completions api
 
     // We can safely assume the role of the completion will be "assistant".
     // So we send back only the content
-
 
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
     if (!OPENAI_API_KEY) {
@@ -135,16 +140,12 @@ export default async function handler(
       return;
     }
 
-
-    
-
-
     // Prepare the payload for the GPT API.
     const payload: {
-      model: string,
-      messages: DialogMessage[],
-      temperature: number,
-      max_tokens?: number,
+      model: string;
+      messages: DialogMessage[];
+      temperature: number;
+      max_tokens?: number;
     } = {
       model: MODEL,
       messages: dialog,
@@ -161,17 +162,39 @@ export default async function handler(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
+      const errorMessage =
+        errorData.error?.message || "Error communicating with GPT API";
+
+      let cause = APIErrorCause.GPTApiError;
+      let isDueToInsufficientFunds = false;
+
+      if (response.status === 402) {
+        cause = APIErrorCause.GPTApiError;
+        isDueToInsufficientFunds = true;
+      } else if (response.status === 429) {
+        if (
+          errorMessage.toLowerCase().includes("quota") ||
+          errorMessage.toLowerCase().includes("insufficient")
+        ) {
+          cause = APIErrorCause.GPTApiError;
+          isDueToInsufficientFunds = true;
+        }
+      }
+
       const apiError: APIError = {
-        cause: APIErrorCause.GPTApiError,
-        message: errorData.error?.message || "Error communicating with GPT API",
+        cause,
+        message: isDueToInsufficientFunds
+          ? "This organization ran out of funding to offer our services for free. We are working on creating a donation portal. Stay tuned!"
+          : errorMessage,
       };
+
       res.status(response.status).send(JSON.stringify(apiError));
       return;
     }
