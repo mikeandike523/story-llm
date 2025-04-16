@@ -1,3 +1,4 @@
+from collections import Counter
 import pickle
 import traceback
 from typing import List, Literal, OrderedDict, TypedDict, Union
@@ -18,13 +19,15 @@ METADATA_PATH = os.path.realpath(
     "example-stories/flatland/processed/index_metadata.pkl"
 )
 
-DEFAULT_DISTANCE_THRESHOLD = 1.5
+DEFAULT_DISTANCE_THRESHOLD = 1.25
 DEFAULT_TEMPERATURE = 0.5
 DEFAULT_TOP_P = 0.9
 DEFAULT_MAX_TOKENS = None
-DEFAULT_NUM_CHAPTERS_TO_ANALYZE=3
+DEFAULT_K = 20
+# For a chapter to be relevant, it must have at lest this proportion of the "votes" (k nearest vectors)
+CHAPTER_RELEVANCY_CUTOFF_FRACTION = 0.75
 
-REQUEST_URL = "http://localhost:5000/completion"
+REQUEST_URL = "https://aisecure.cmihandbook.com/completion"
 
 print("Loading metadata...", end=" ")
 
@@ -56,7 +59,7 @@ Dialog = List[DialogMessage]
 
 
 def query_vector_db(
-    query: str, k: int = DEFAULT_NUM_CHAPTERS_TO_ANALYZE, distance_threshold: float = DEFAULT_DISTANCE_THRESHOLD
+    query: str, k: int = DEFAULT_K, distance_threshold: float = DEFAULT_DISTANCE_THRESHOLD
 ):
     """
     Performs a vector search on the FAISS index and returns only the results with distance under the threshold.
@@ -137,6 +140,29 @@ def get_local_llama_completion(
     except requests.RequestException as e:
         print(f"Error occurred while making the request: {e}")
         return None
+    
+def attempt_answer_question_by_chapter(chapter_name, chapter_text):
+
+    dialog = [
+
+        {
+            "role":"system",
+            "content": """
+You will answer the user's question in the context of the provided chapter.
+
+If the chapter is truly not relevant to question, reply !!!IRRELEVANT!!!
+
+""".strip()
+        },
+        {
+            "role":"user",
+            "content":f"""
+
+
+""".strip()
+        },
+
+    ]
 
 
 def ask() -> str:
@@ -148,154 +174,43 @@ def ask() -> str:
     if question == "!quit":
         return "!quit"
 
-    relevant_sections = query_vector_db(
-        question, k=DEFAULT_NUM_CHAPTERS_TO_ANALYZE, distance_threshold=DEFAULT_DISTANCE_THRESHOLD
-    )
-    
-    print(f"Found {len(relevant_sections)} relevant sections.")
-    
-    print("\n")
-    for relevant_section in relevant_sections:
-        print(f"Section: {colored(relevant_section['name'], 'blue')}")
-    
-    print("\n")
-
-    outline = OrderedDict()
-
-    for section in relevant_sections:
-        print(f"Thinking about: '{section['name']}'...")
-        try:
-            answer = get_local_llama_completion(
-                [
-                    {
-                        "role": "system",
-                        "content": f"""
-    Attempt to answer the question about "Flatland" by Edwin Abbot
-    in the context of the provided book chapter text.
-    
-    If the text is truly irrelevant, reply with !!!IRRELEVANT!!!
-                    """,
-                    },
-                    {"role": "user", "content": f"[Question to Address]: {question}"},
-                    {
-                        "role": "user",
-                        "content": f"""
-    [Chapter Title]: '{section['name']}'
-    [Chapter Text]:
-
-    {section['original_text'].strip()}
-                    """.strip(),
-                    },
-                ]
-            )
-
-            if not (
-                "!!!IRRELEVANT!!!" in answer.upper()
-                or "!!IRRELEVANT!!" in answer.upper()
-            ):
-                print("Full chapter text analysis successful.")
-                outline[section["name"]] = answer
-            else:
-                    print(f"""
-On second thought, durring full chapter text analysis,
-LLM thought '{section['name']}' was irrelevant.
-                          """.strip())
-        except Exception as e:
-            print(
-                f"Could not analyze entire chapter text, going to try with pre-baked summary statements: {e}"
-            )
-
-            try:
-                answer = get_local_llama_completion(
-                    [
-                        {
-                            "role": "system",
-                            "content": f"""
-    Attempt to answer the question about "Flatland" by Edwin Abbot in the context
-    of the provided summary statements.
-    
-    If the statements are truly irrelevant, reply with !!!IRRELEVANT!!!
-                    """,
-                        },
-                        {
-                            "role": "user",
-                            "content": f"[Question to Address]: {question}",
-                        },
-                        {
-                            "role": "user",
-                            "content": f"""
-    [Chapter Title]: '{section['name']}'
-    [Summary Statements]:
-
-    {format_summary_sentences(section['summary_statements']).strip()}
-                    """.strip(),
-                        },
-                    ]
-                )
-
-                if not (
-                    "!!!IRRELEVANT!!!" in answer.upper()
-                    or "!!IRRELEVANT!!" in answer.upper()
-                ):
-                    outline[section["name"]] = answer
-                    print("Summary statement analysis successful.")
-                else:
-                    print(f"""
-On second thought, durring summary statement analysis,
-LLM thought '{section['name']}' was irrelevant.
-                          """.strip())
-
-            except Exception as e:
-                print(f"Error occurred while making the LLM completion request: {e}")
-
-    essay_skeleton = f"\n\n{'='*10}\n\n".join(
-        [
-            f"""
-        
-Chapter: {section_name}
-
-Observations:
-
-{answer}
-        
-        """.strip()
-            for section_name, answer in outline.items()
-        ]
+    relevant_paragraphs = query_vector_db(
+        question, k=DEFAULT_K, distance_threshold=DEFAULT_DISTANCE_THRESHOLD
     )
 
-    print(f"""
-Finished creating essay skeleton from {len(outline)} relevant sections.
-{len(relevant_sections)-len(outline)} of the initial sections were irrelevant.
-""".strip())
-    
-    print("Writing essay...")
-    
-    essay = get_local_llama_completion(
-        [
-            {
-                "role":"system",
-                "content":f"""
-Please write a cohesive essay essay about "Flatland" by Edwin Abbot
-that attempts to answer a given question (thesis) using the provided outline.
-                """
-            },
-            {
-                "role":"user",
-                "content":f"[Question to Address]: {question}"
-            },
-            {
-                "role":"user",
-                "content":f"""
-[Essay Outline]:
+    print(f"Found {len(relevant_paragraphs)} relevant paragraphs.")
 
-{essay_skeleton.strip()}                
-                
-                """.strip()
-            }
-        ]
-    )
-    
-    print(colored(essay, "green", attrs=["bold"]) + "\n")
+    if len(relevant_paragraphs) == 0:
+
+        print("Cannot find relevant information, sorry. Please ask another question.")
+
+        return None
+
+    counts = Counter()
+
+    for paragraph_metadata in relevant_paragraphs:
+        chapter_name = paragraph_metadata["chapter_name"]
+        counts.update([chapter_name])
+
+    print("Chapter hit frequencies:")
+
+    for chapter_name, count in counts.items():
+        print(f"{colored(chapter_name, 'blue', attrs=['bold'])}: {count}")
+
+    total_counts = sum(counts.values())
+    proportions = {chapter: count / total_counts for chapter, count in counts.items()}
+
+    winner_chapters = []
+
+    for chapter, proportion in proportions.items():
+        if proportion >= CHAPTER_RELEVANCY_CUTOFF_FRACTION:
+            winner_chapters.append(chapter)
+
+    print(f"Chapters with at least {CHAPTER_RELEVANCY_CUTOFF_FRACTION * 100:.0f}% relevance:")
+
+    for chapter in winner_chapters:
+        print(f"{colored(chapter, 'blue', attrs=['bold'])}")
+
 
     return None
 

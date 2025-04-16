@@ -1,0 +1,4 @@
+Average nearest neighbor distance: 0.79572743
+Median nearest neighbor distance: 0.78852993
+Minimum nearest neighbor distance: 0.29310834
+Maximum nearest neighbor distance: 1.2790285

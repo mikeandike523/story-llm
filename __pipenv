@@ -1,8 +1,0 @@
-#!/bin/bash
-
-dn="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-
-source "$dn/.venv/bin/activate"
-export PIPENV_VERBOSITY=-1 
-pipenv "$@"
-deactivate
