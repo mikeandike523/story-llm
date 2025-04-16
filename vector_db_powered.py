@@ -28,7 +28,7 @@ ULTRA_SHORT_RESPONSE_MAX_TOKENS = 32
 DEFAULT_K = 50
 # For a chapter to be relevant, it must have at lest this proportion of the "votes" (k nearest vectors)
 CHAPTER_RELEVANCY_CUTOFF_FRACTION = 0.05
-HIGH_CONFIDENCE_TEMPERATURE = 0.2
+HIGH_CONFIDENCE_TEMPERATURE = 0.5
 
 REQUEST_URL = "https://aisecure.cmihandbook.com/completion"
 
@@ -209,6 +209,9 @@ If the chapter is truly not relevant to question, reply !!!IRRELEVANT!!!
 
     reply = get_local_llama_completion(dialog, max_tokens=SHORT_RESPONSE_MAX_TOKENS)
 
+    if reply is None:
+        return None
+
     flag_pattern = re.compile(
         r"(?:(?<=^)|(?<=\s))!{1,3}IRRELEVANT!{1,3}(?:(?=\s)|(?=$))",
         re.IGNORECASE | re.MULTILINE,
@@ -255,6 +258,9 @@ If the chapter is truly not relevant to question, reply !!!IRRELEVANT!!!
 
     reply = get_local_llama_completion(dialog, max_tokens=SHORT_RESPONSE_MAX_TOKENS)
 
+    if reply is None:
+        return None
+
     flag_pattern = re.compile(
         r"(?:(?<=^)|(?<=\s))!{1,3}IRRELEVANT!{1,3}(?:(?=\s)|(?=$))",
         re.IGNORECASE | re.MULTILINE,
@@ -288,13 +294,12 @@ def run_command(command, *args):
 def LLM_classify_input(
     input_text: str,
 ) -> Literal["sensible", "accidental", "command", "unsure"]:
+    return "sensible"
     dialog = [
         {
             "role": "system",
             "content": """
 Judge whether the user input is a sensible question or statement, or it is likely to be accidental typing or an incomplete thought.
-
-There a few exceptions:
 
 The user also has some special commands that begin with a "!", such as:
 
@@ -440,7 +445,6 @@ def ask() -> str:
 Please answer the user's question based on observations about individual chapters.
 
 Write your answer in an essay format and avoid self-referential statements such as "Based on the observations in each chapter...".
-Prefer essay/conversational format and try to reduce the use of lists and other awkward communication.
 
 """.strip(),
             },
