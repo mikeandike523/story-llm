@@ -27,7 +27,8 @@ DEFAULT_K = 50
 CHAPTER_RELEVANCY_CUTOFF_FRACTION = 0.05
 HIGH_CONFIDENCE_TEMPERATURE = 0.5
 
-REQUEST_URL = "http://localhost:5000/completion"
+# REQUEST_URL = "http://localhost:5000/completion"
+REQUEST_URL = "https://aisecure.cmihandbook.com/completion"
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 

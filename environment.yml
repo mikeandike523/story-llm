@@ -1,0 +1,19 @@
+name: story-llm-env
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - numpy
+  - faiss-cpu
+  - flask
+  - click
+  - pip
+  - Flask-SocketIO
+  - requests
+  - pip:
+    - sentence_transformers
+    - prompt_toolkit
+    - termcolor
+    - websocket-client
