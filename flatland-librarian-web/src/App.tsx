@@ -15,7 +15,6 @@ import { Button, Div, H1, H2, Textarea } from "style-props-html";
 import { v4 as uuidv4 } from "uuid";
 import decorationsToCSS from "./utils/decorationsToCss";
 
-
 import "./App.css";
 
 const MAX_LOGS = 50;
@@ -32,6 +31,8 @@ function App() {
   const logsContainerRef = useRef<HTMLDivElement>(null);
 
   const [logs, setLogs] = useState<[string, AugmentedToken[]][]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fancyLog = useCallback(
     (message: string) => {
       const tokens = parseAnsiSequences(message);
@@ -53,6 +54,10 @@ function App() {
     [logs]
   );
 
+  const clearLogs = () => {
+    setLogs([]);
+  };
+
   useEffect(() => {
     const logsContainer = logsContainerRef.current;
     if (logsContainer) {
@@ -63,9 +68,20 @@ function App() {
       });
     }
   }, [logs]);
-  
-  async function fetchAnswer(question: string) {
-    
+
+  async function fetchAnswer() {
+    setIsProcessing(true);
+    try {
+      // todo
+    } catch (error) {
+      setIsProcessing(false);
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Unknown error. You can check the browser console for more details."
+      );
+    }
+    clearLogs();
   }
 
   return (
@@ -107,7 +123,7 @@ function App() {
               setQuestion(e.target.value);
             }}
           ></Textarea>
-          <Button fontSize="1rem" padding="0.25rem">
+          <Button fontSize="1rem" padding="0.25rem" onClick={fetchAnswer}>
             Go!
           </Button>
         </Div>
