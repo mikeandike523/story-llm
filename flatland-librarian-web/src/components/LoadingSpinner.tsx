@@ -16,11 +16,13 @@ export interface LoadingSpinnerProps extends DivProps {
   spinnerSecondaryColor?: string;
   spinnerBackgroundColor?: string;
   spinnerProps?: Partial<DivProps>;
+  periodSeconds: number;
 }
 
 export default forwardRef<HTMLDivElement, LoadingSpinnerProps>(
   function LoadingSpinner(
     {
+      periodSeconds = 1,
       fadeSeconds,
       show,
       size,
@@ -54,7 +56,7 @@ export default forwardRef<HTMLDivElement, LoadingSpinnerProps>(
             border-radius: 50%;
             border: ${thicknessString} solid ${spinnerPrimaryColor};
             border-top: ${thicknessString} solid ${spinnerSecondaryColor};
-            animation: ${spinnerAnimation} ${fadeSeconds}s linear infinite;
+            animation: ${spinnerAnimation} ${periodSeconds}s linear infinite;
           `}
           {...spinnerProps}
         ></Div>

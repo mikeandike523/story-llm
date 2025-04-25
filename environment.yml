@@ -17,3 +17,4 @@ dependencies:
     - prompt_toolkit
     - termcolor
     - websocket-client
+    - flask-cors

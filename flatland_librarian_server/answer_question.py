@@ -195,7 +195,6 @@ def get_local_llama_completion(
 
     #  Do the post request here ...
     try:
-        report("Requesting LLM completion...")
         response = requests.post(REQUEST_URL, json=request_data)
         response.raise_for_status()  # Raise an exception for bad status codes
 

@@ -1,17 +1,15 @@
-import pickle
-from typing import List, Literal, TypedDict
-from flask import Flask, jsonify, request
-from flask_socketio import SocketIO, join_room
 import uuid
-from server_types import TaskBeginResponse, TaskRequest
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from answer_question import answer_question
-import os
-import faiss
-from sentence_transformers import SentenceTransformer
-
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from flask_socketio import SocketIO, join_room
+from server_types import TaskBeginResponse, TaskRequest
 
 app = Flask(__name__)
+
+CORS(app)
+
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins='*')
 
