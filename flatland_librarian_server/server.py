@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 import uuid
 from dataclasses import asdict
 from answer_question import answer_question
@@ -6,13 +9,22 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, join_room
 from server_types import TaskBeginResponse, TaskRequest
 
+
 app = Flask(__name__)
 
 CORS(app)
 
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, cors_allowed_origins='*')
+socketio = SocketIO(app, cors_allowed_origins='*', logger=True, engineio_logger=True)
 
+@socketio.on('connect', namespace='/flatland-librarian-server')
+def handle_connect():
+    print("Client connected to /flatland-librarian-server")
+    # any initialization …
+
+@socketio.on('disconnect', namespace='/flatland-librarian-server')
+def handle_disconnect():
+    print("Client disconnected from /flatland-librarian-server")
 
 @app.route('/begin', methods=['GET'])
 def begin_task():
@@ -39,4 +51,11 @@ def on_join(data):
     print(f"Client joined room {task_id}")
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=8080)
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=8080,
+        debug=True,
+        # you can explicitly choose eventlet if you have multiple servers installed
+        # async_mode='eventlet',
+    )

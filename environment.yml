@@ -10,11 +10,10 @@ dependencies:
   - flask
   - click
   - pip
-  - Flask-SocketIO
+  - eventlet
+  - flask-socketio[eventlet]
   - requests
-  - pip:
-    - sentence_transformers
-    - prompt_toolkit
-    - termcolor
-    - websocket-client
-    - flask-cors
+  - prompt_toolkit
+  - termcolor
+  - websocket-client
+  - flask-cors

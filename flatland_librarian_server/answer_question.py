@@ -27,8 +27,8 @@ DEFAULT_K = 50
 CHAPTER_RELEVANCY_CUTOFF_FRACTION = 0.05
 HIGH_CONFIDENCE_TEMPERATURE = 0.5
 
-# REQUEST_URL = "http://localhost:5000/completion"
-REQUEST_URL = "https://aisecure.cmihandbook.com/completion"
+REQUEST_URL = "http://localhost:5000/completion"
+# REQUEST_URL = "https://aisecure.cmihandbook.com/completion"
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -201,17 +201,9 @@ def get_local_llama_completion(
         # Parse the JSON response
         completion = response.json()
 
-        report("Done.")
-
         return completion["content"]
 
     except requests.RequestException as e:
-        emit_error(socketio, task_id,
-            colored(
-                f"Network error.\n{e}\nHowever sometimes this can occur when chapter text is too long. Attempting backup strategy",
-                "red",
-            )
-        )
         return None
 
 
@@ -385,9 +377,8 @@ def ask(question, socketio, task_id) -> str:
             report(
                 f"After LLM reconsidered, chapter {chapter_name} is not really relevant."
             )
-            report(
-                f"Full chapter text analysis failed. Trying summary statement analysis..."
-            )
+        elif answer is None:
+            report("Trying summary statement analysis...")
             summary_answer = attempt_answer_question_by_summary_statements(
                 question, chapter_name, chapter.summary_statements, socketio, task_id
             )
@@ -396,12 +387,12 @@ def ask(question, socketio, task_id) -> str:
                     f"After LLM reconsidered, chapter {chapter_name} is not really relevant."
                 )
             elif summary_answer is None:
-                report(f"Network or other error when analyzing with summary statements.")
+                report(f"Error when analyzing with summary statements.")
             else:
+                report(f"\n\n{summary_answer}\n\n")
                 observations[chapter_name] = summary_answer
-        elif answer is None:
-            report("Failed to analyze full chapter text, trying summary statement analysis...")
         else:
+            report(f"\n\n{answer}\n\n")
             observations[chapter_name] = answer
 
     report("Putting it all together...")

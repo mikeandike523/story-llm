@@ -29,7 +29,9 @@ import {
 } from "./types/server-messages";
 import decorationsToCSS from "./utils/decorationsToCss";
 
-const BASE_URL = "http://localhost:8080";
+const BASE_URL = import.meta.env.PROD
+  ? "/flatland-librarian-server"
+  : "http://localhost:8080";
 const MAX_LOGS = 50;
 
 const colorPalette = createColorPalette();
@@ -85,14 +87,14 @@ function App() {
         uuidv4(),
         parseAnsiSequences(message).map((token) => {
           return {
-           ...token,
+            ...token,
             style: decorationsToCSS(new Set(token.decorations)),
           };
         }),
       ]);
       return existingLogs;
-    })
-  },[])
+    });
+  }, []);
 
   const clearLogs = () => {
     setLogs([]);
@@ -123,7 +125,12 @@ function App() {
         if (!taskId) throw new Error("No task_id in /begin response");
 
         // 2) Connect socket
-        const socket = io(BASE_URL, { transports: ["websocket"] });
+        const socket = io("https://aisecure.cmihandbook.com", {
+          path: "/socket.io",            // default
+          transports: ["websocket"],
+          withCredentials: false,
+          // note: you’re implicitly asking for namespace "/flatland-librarian-server":
+        });
         socketRef.current = socket;
 
         socket.on("connect", () => {

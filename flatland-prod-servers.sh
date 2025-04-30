@@ -2,10 +2,10 @@
 
 # Define the commands
 COMMAND_1="cd flatland_librarian_server && python server.py"
-COMMAND_2="cd flatland-librarian-web && pnpm dev"
+COMMAND_2="cd flatland-librarian-web && pnpm preview"
 
 # Name of the tmux session
-SESSION_NAME="flatland-dev"
+SESSION_NAME="flatland-prod"
 
 # Kill existing session if it exists
 tmux kill-session -t $SESSION_NAME 2>/dev/null
