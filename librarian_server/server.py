@@ -17,14 +17,14 @@ CORS(app)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins='*', logger=True, engineio_logger=True)
 
-@socketio.on('connect', namespace='/flatland-librarian-server')
+@socketio.on('connect', namespace='/librarian-server')
 def handle_connect():
-    print("Client connected to /flatland-librarian-server")
+    print("Client connected to /librarian-server")
     # any initialization …
 
-@socketio.on('disconnect', namespace='/flatland-librarian-server')
+@socketio.on('disconnect', namespace='/librarian-server')
 def handle_disconnect():
-    print("Client disconnected from /flatland-librarian-server")
+    print("Client disconnected from /librarian-server")
 
 @app.route('/begin', methods=['GET'])
 def begin_task():

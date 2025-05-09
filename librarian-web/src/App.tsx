@@ -29,9 +29,7 @@ import {
 } from "./types/server-messages";
 import decorationsToCSS from "./utils/decorationsToCss";
 
-const BASE_URL = import.meta.env.PROD
-  ? "/flatland-librarian-server"
-  : "http://localhost:8080";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const MAX_LOGS = 50;
 
 const colorPalette = createColorPalette();
@@ -118,14 +116,14 @@ function App() {
       setIsProcessing(true);
       try {
         // 1) Begin task
-        const beginRes = await fetch(`${BASE_URL}/begin`);
+        const beginRes = await fetch(`${BACKEND_URL}/begin`);
         if (!beginRes.ok)
           throw new Error(`Begin failed: ${beginRes.statusText}`);
         const { task_id: taskId } = await beginRes.json();
         if (!taskId) throw new Error("No task_id in /begin response");
 
         // 2) Connect socket
-        const socket = io("https://aisecure.cmihandbook.com", {
+        const socket = io(BACKEND_URL, {
           path: "/socket.io",            // default
           transports: ["websocket"],
           withCredentials: false,
@@ -139,7 +137,7 @@ function App() {
           fancyLog(`[SocketIO] joined room: ${taskId}`);
 
           // 3) send question
-          fetch(`${BASE_URL}/ask`, {
+          fetch(`${BACKEND_URL}/ask`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ task_id: taskId, payload: question }),
